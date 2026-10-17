@@ -1,11 +1,26 @@
 import time
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 import requests
 from bs4 import BeautifulSoup
 
-# Wklej tutaj swój skopiowany link webhooka z Discorda w cudzysłowie
-WEBHOOK_URL = "https://discord.com/api/webhooks/1560940211859357696/CmEPHq6Tb5hdI42lUKJV44bH6nqKn2Xo9icu-9Ov3dqRjCTMfm6GR0HqxSScm8laWrYf"
+# Mini-serwer wymagany dla darmowej usługi Web Service na Renderze
+class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Bot OLX dziala 24/7!")
 
-# Link z filtrami OLX: Poznań, telefony, od najnowszych
+def run_http_server():
+    server = HTTPServer(('0.0.0.0', 10000), SimpleHTTPRequestHandler)
+    server.serve_forever()
+
+# Uruchomienie serwera w osobnym wątku
+threading.Thread(target=run_http_server, daemon=True).start()
+
+# --- TUTAJ WPISZ SWÓJ WEBHOOK ---
+WEBHOOK_URL = "TUTAJ_WKLEJ_LINK_DO_WEBHOOKA_DISCORD"
+
 OLX_URL = "https://www.olx.pl/elektronika/telefony/smartfony-telefony/poznan/?search%5Border%5D=created_at%3Adesc"
 
 headers = {
