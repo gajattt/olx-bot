@@ -20,10 +20,8 @@ WEBHOOK_URL = "https://discord.com/api/webhooks/1560940211859357696/CmEPHq6Tb5hd
 
 TARGET_OLX = "https://www.olx.pl/elektronika/telefony/smartfony-telefony/poznan/?search%5Border%5D=created_at%3Adesc"
 
+OLX_URL = f"https://api.codetabs.com/v1/proxy?quest={TARGET_OLX}"
 
-OLX_URL = f"https://api.allorigins.win/raw?url={requests.utils.quote(TARGET_OLX)}"
-
-# Bardziej zaawansowane nagłówki udające prawdziwą przeglądarkę
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
