@@ -18,13 +18,14 @@ threading.Thread(target=run_http_server, daemon=True).start()
 
 WEBHOOK_URL = "https://discord.com/api/webhooks/1560940211859357696/CmEPHq6Tb5hdI42lUKJV44bH6nqKn2Xo9icu-9Ov3dqRjCTMfm6GR0HqxSScm8laWrYf"
 TARGET_OLX = "https://www.olx.pl/elektronika/telefony/smartfony-telefony/poznan/?search%5Border%5D=created_at%3Adesc"
-OLX_URL = f"https://api.allorigins.win/raw?url={requests.utils.quote(TARGET_OLX)}"
+OLX_URL = f"https://api.codetabs.com/v1/proxy?quest={TARGET_OLX}"
 
 seen_ids = set()
 
 def get_latest_ads():
     try:
-        response = requests.get(OLX_URL, timeout=15)
+        # Zwiększamy timeout do 25 sekund, żeby proxy miało czas na odpowiedź
+        response = requests.get(OLX_URL, timeout=25)
         print(f"Status OLX: {response.status_code}", flush=True)
         
         if response.status_code != 200:
@@ -33,17 +34,13 @@ def get_latest_ads():
         soup = BeautifulSoup(response.text, 'html.parser')
         ads = []
         
-        # Szukamy absolutnie wszystkich linków na stronie, które wyglądają jak ogłoszenie OLX
         for a in soup.find_all('a', href=True):
             href = a['href']
-            # Oferty na OLX zawierają w linku '-ID' lub '/d/oferta/'
             if '-ID' in href or '/d/oferta/' in href:
                 link = "https://www.olx.pl" + href if href.startswith('/') else href
                 
-                # Wyciągamy tytuł z tekstu linku lub nagłówka w środku
                 title = a.text.strip()
                 if not title or len(title) < 5:
-                    # Spróbujmy znaleźć nagłówek w pobliżu linku
                     parent = a.find_parent('div')
                     if parent:
                         h_tag = parent.find(['h4', 'h6', 'p'])
@@ -54,24 +51,22 @@ def get_latest_ads():
                     title = "Nowy iPhone (zobacz na OLX)"
 
                 try:
-                    # Unikalne ID ogłoszenia z linku
                     ad_id = link.split('-ID')[-1].split('.')[0]
-                    if len(ad_id) < 15: # Upewniamy się, że to poprawne ID
+                    if len(ad_id) < 15:
                         ads.append({
                             "id": ad_id,
-                            "title": title[:100], # Ograniczamy długość tytułu
+                            "title": title[:100],
                             "link": link
                         })
                 except:
                     continue
                     
-        # Usuwamy duplikaty z listy
         unique_ads = {ad['id']: ad for ad in ads}.values()
         print(f"Znaleziono unikalnych ogłoszeń: {len(unique_ads)}", flush=True)
         return list(unique_ads)
         
     except Exception as e:
-        print("Błąd pobierania:", e, flush=True)
+        print("Błąd pobierania (timeout/proxy):", e, flush=True)
         return []
 
 print("--- STARTUJEMY BOTA OLX ---", flush=True)
