@@ -17,74 +17,66 @@ def run_http_server():
 threading.Thread(target=run_http_server, daemon=True).start()
 
 WEBHOOK_URL = "https://discord.com/api/webhooks/1560940211859357696/CmEPHq6Tb5hdI42lUKJV44bH6nqKn2Xo9icu-9Ov3dqRjCTMfm6GR0HqxSScm8laWrYf"
-
 TARGET_OLX = "https://www.olx.pl/elektronika/telefony/smartfony-telefony/poznan/?search%5Border%5D=created_at%3Adesc"
-
-OLX_URL = f"https://api.codetabs.com/v1/proxy?quest={TARGET_OLX}"
-
-headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-    "Accept-Language": "pl-PL,pl;q=0.9,en-US;q=0.8,en;q=0.7",
-    "Accept-Encoding": "gzip, deflate, br",
-    "Connection": "keep-alive",
-    "Upgrade-Insecure-Requests": "1",
-    "Sec-Fetch-Dest": "document",
-    "Sec-Fetch-Mode": "navigate",
-    "Sec-Fetch-Site": "none",
-    "Sec-Fetch-User": "?1",
-    "Cache-Control": "max-age=0"
-}
+OLX_URL = f"https://api.allorigins.win/raw?url={requests.utils.quote(TARGET_OLX)}"
 
 seen_ids = set()
 
 def get_latest_ads():
     try:
-        # Używamy sesji, aby zachować ciasteczka
-        session = requests.Session()
-        response = session.get(OLX_URL, headers=headers, timeout=10)
+        response = requests.get(OLX_URL, timeout=15)
         print(f"Status OLX: {response.status_code}", flush=True)
         
         if response.status_code != 200:
-            print("OLX nadal blokuje zapytanie (403/503).", flush=True)
             return []
 
         soup = BeautifulSoup(response.text, 'html.parser')
         ads = []
         
-        cards = soup.select('div[data-cy="l-card"]')
-        if not cards:
-            cards = soup.select('[data-testid="l-card"]')
-            
-        print(f"Znaleziono kart na stronie: {len(cards)}", flush=True)
-        
-        for card in cards:
-            title_elem = card.find('h4') or card.find('h6')
-            link_elem = card.find('a')
-            
-            if title_elem and link_elem and link_elem.has_attr('href'):
-                title = title_elem.text.strip()
-                href = link_elem['href']
+        # Szukamy absolutnie wszystkich linków na stronie, które wyglądają jak ogłoszenie OLX
+        for a in soup.find_all('a', href=True):
+            href = a['href']
+            # Oferty na OLX zawierają w linku '-ID' lub '/d/oferta/'
+            if '-ID' in href or '/d/oferta/' in href:
                 link = "https://www.olx.pl" + href if href.startswith('/') else href
                 
-                if '-ID' in link:
-                    try:
-                        ad_id = link.split('-ID')[-1].split('.')[0]
+                # Wyciągamy tytuł z tekstu linku lub nagłówka w środku
+                title = a.text.strip()
+                if not title or len(title) < 5:
+                    # Spróbujmy znaleźć nagłówek w pobliżu linku
+                    parent = a.find_parent('div')
+                    if parent:
+                        h_tag = parent.find(['h4', 'h6', 'p'])
+                        if h_tag:
+                            title = h_tag.text.strip()
+                
+                if not title:
+                    title = "Nowy iPhone (zobacz na OLX)"
+
+                try:
+                    # Unikalne ID ogłoszenia z linku
+                    ad_id = link.split('-ID')[-1].split('.')[0]
+                    if len(ad_id) < 15: # Upewniamy się, że to poprawne ID
                         ads.append({
                             "id": ad_id,
-                            "title": title,
+                            "title": title[:100], # Ograniczamy długość tytułu
                             "link": link
                         })
-                    except:
-                        continue
-        return ads
+                except:
+                    continue
+                    
+        # Usuwamy duplikaty z listy
+        unique_ads = {ad['id']: ad for ad in ads}.values()
+        print(f"Znaleziono unikalnych ogłoszeń: {len(unique_ads)}", flush=True)
+        return list(unique_ads)
+        
     except Exception as e:
         print("Błąd pobierania:", e, flush=True)
         return []
 
-print("--- STARTUJEMY TEST POBIERANIA ---", flush=True)
+print("--- STARTUJEMY BOTA OLX ---", flush=True)
 initial_ads = get_latest_ads()
-print(f"Początkowo wykrytych ogłoszeń: {len(initial_ads)}", flush=True)
+print(f"Początkowo załadowanych ogłoszeń: {len(initial_ads)}", flush=True)
 for ad in initial_ads:
     seen_ids.add(ad['id'])
 
@@ -100,7 +92,7 @@ while True:
                 requests.post(WEBHOOK_URL, json=data)
                 seen_ids.add(ad['id'])
                   
-        time.sleep(45) # Nieco dłuższy interwał, żeby rzadziej odpytywać serwer
+        time.sleep(45)
     except Exception as e:
         print("Błąd w pętli:", e, flush=True)
         time.sleep(45)
