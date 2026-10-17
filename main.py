@@ -17,7 +17,7 @@ def run_http_server():
 threading.Thread(target=run_http_server, daemon=True).start()
 
 WEBHOOK_URL = "https://discord.com/api/webhooks/1560940211859357696/CmEPHq6Tb5hdI42lUKJV44bH6nqKn2Xo9icu-9Ov3dqRjCTMfm6GR0HqxSScm8laWrYf"
-OLX_URL = "https://www.olx.pl/poznan/q-iphone/?search%5Border%5D=created_at:desc"
+OLX_URL = "https://m.olx.pl/elektronika/telefony/smartfony-telefony/poznan/?search%5Border%5D=created_at%3Adesc"
 
 # Bardziej zaawansowane nagłówki udające prawdziwą przeglądarkę
 headers = {
