@@ -17,28 +17,39 @@ def run_http_server():
 threading.Thread(target=run_http_server, daemon=True).start()
 
 WEBHOOK_URL = "https://discord.com/api/webhooks/1560940211859357696/CmEPHq6Tb5hdI42lUKJV44bH6nqKn2Xo9icu-9Ov3dqRjCTMfm6GR0HqxSScm8laWrYf"
-OLX_URL = "https://www.olx.pl/elektronika/telefony/smartfony-telefony/poznan/?search%5Border%5D=created_at%3Adesc"
+OLX_URL = "https://www.olx.pl/poznan/q-iphone/?search%5Border%5D=created_at:desc"
 
+# Bardziej zaawansowane nagłówki udające prawdziwą przeglądarkę
 headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Accept-Language": "pl-PL,pl;q=0.9,en-US;q=0.8,en;q=0.7"
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+    "Accept-Language": "pl-PL,pl;q=0.9,en-US;q=0.8,en;q=0.7",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Connection": "keep-alive",
+    "Upgrade-Insecure-Requests": "1",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
+    "Cache-Control": "max-age=0"
 }
 
 seen_ids = set()
 
 def get_latest_ads():
     try:
-        response = requests.get(OLX_URL, headers=headers, timeout=10)
+        # Używamy sesji, aby zachować ciasteczka
+        session = requests.Session()
+        response = session.get(OLX_URL, headers=headers, timeout=10)
         print(f"Status OLX: {response.status_code}", flush=True)
         
         if response.status_code != 200:
-            print("OLX zablokowało lub zwróciło błąd!", flush=True)
+            print("OLX nadal blokuje zapytanie (403/503).", flush=True)
             return []
 
         soup = BeautifulSoup(response.text, 'html.parser')
         ads = []
         
-        # Szukamy różnych wariantów kart na OLX
         cards = soup.select('div[data-cy="l-card"]')
         if not cards:
             cards = soup.select('[data-testid="l-card"]')
@@ -87,7 +98,7 @@ while True:
                 requests.post(WEBHOOK_URL, json=data)
                 seen_ids.add(ad['id'])
                   
-        time.sleep(30)
+        time.sleep(45) # Nieco dłuższy interwał, żeby rzadziej odpytywać serwer
     except Exception as e:
         print("Błąd w pętli:", e, flush=True)
-        time.sleep(30)
+        time.sleep(45)
